@@ -98,10 +98,10 @@ body{font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif
 .game-main{flex:1;padding:20px 16px;display:flex;flex-direction:column;gap:16px;max-width:900px;width:100%;margin:0 auto;}
 .instruction-box{display:flex;align-items:center;gap:12px;background:#F0F9FF;border:3px solid #BAE6FD;border-radius:20px;padding:16px 24px;font-size:20px;color:#0369A1;font-weight:900;box-shadow:inset 0 2px 4px rgba(0,0,0,.05);}
 .instruction-icon{font-size:22px;flex-shrink:0;}
-.game-board{min-height:200px;background:#F8FAFC;border:4px dashed #CBD5E1;border-radius:20px;padding:24px 16px;display:flex;flex-wrap:nowrap;align-items:center;justify-content:center;gap:8px 0;user-select:none;transition:background .3s;overflow-x:auto;}
+.game-board{min-height:200px;background:#F8FAFC;border:4px dashed #CBD5E1;border-radius:20px;padding:24px 16px;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 0;user-select:none;transition:background .3s;}
 .game-board::-webkit-scrollbar{height:6px;}
 .game-board::-webkit-scrollbar-thumb{background:var(--gray-200);border-radius:3px;}
-.word-block{display:inline-flex;flex-wrap:nowrap;align-items:center;background:white;padding:15px 24px;border-radius:24px;border:4px solid var(--gray-200);box-shadow:0 8px 0 var(--gray-200);font-size:42px;font-weight:900;line-height:1.2;cursor:default;margin:12px 6px;transition:all .2s cubic-bezier(.175,.885,.32,1.275);}
+.word-block{display:inline-flex;flex-wrap:wrap;align-items:center;background:white;padding:15px 24px;border-radius:24px;border:4px solid var(--gray-200);box-shadow:0 8px 0 var(--gray-200);font-size:42px;font-weight:900;line-height:1.2;cursor:default;margin:12px 6px;transition:all .2s cubic-bezier(.175,.885,.32,1.275);max-width:calc(100% - 12px);}
 @media (max-width:600px){.word-block{font-size:20px;padding:8px 10px;}}
 .word-block.correct{border-color:var(--green);background:#F0FDF4;color:var(--green-dark);box-shadow:0 0 0 3px #BBF7D0,0 2px 8px rgba(0,0,0,.08);}
 .word-block.wrong{border-color:var(--red);background:#FEF2F2;color:#B91C1C;animation:shake .4s;}
@@ -170,7 +170,7 @@ body{font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif
 .compare-sentence{font-size:26px;font-weight:800;color:var(--gray-800);line-height:1.6;word-break:keep-all;}
 .tip-box{background:#EEF2FF;border:2px solid #C7D2FE;border-radius:12px;padding:24px;text-align:center;font-size:19px;line-height:1.9;color:var(--gray-800);margin-top:16px;}
 .tip-title{font-weight:900;font-size:21px;color:var(--indigo);margin-bottom:12px;display:block;}
-.practice-board{min-height:100px;background:#F8FAFC;border:3px dashed #CBD5E1;border-radius:16px;padding:24px 16px;display:flex;flex-wrap:nowrap;align-items:center;justify-content:flex-start;gap:6px 0;user-select:none;margin-bottom:16px;overflow-x:auto;white-space:nowrap;}
+.practice-board{min-height:100px;background:#F8FAFC;border:3px dashed #CBD5E1;border-radius:16px;padding:24px 16px;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:6px 0;user-select:none;margin-bottom:16px;}
 .practice-board::-webkit-scrollbar{height:6px;}
 .practice-board::-webkit-scrollbar-thumb{background:#D1D5DB;border-radius:3px;}
 .practice-result{min-height:36px;text-align:center;font-size:16px;font-weight:700;margin-bottom:12px;}
@@ -3004,11 +3004,12 @@ function captureCertificate() {
       retry: solvedRetryCount,
       wrong: wrongCount,
       badge: badge,
-      perfect: (solvedFirstCount === total)
+      perfect: (solvedFirstCount === total),
+      wrongItems: wrongHistory.slice()
     });
 
     var link = document.createElement('a');
-    var fileName = '띄어쓰기_박사증_' + currentStudent.name + '_' + now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate() + '.png';
+    var fileName = '띄어쓰기_성적표_' + currentStudent.name + '_' + now.getFullYear() + '_' + (now.getMonth() + 1) + '_' + now.getDate() + '.png';
     link.download = fileName;
     link.href = canvas.toDataURL('image/png');
     link.click();
@@ -3021,7 +3022,20 @@ function captureCertificate() {
 }
 
 function drawCertificateCanvas(d) {
-  var W = 900, H = 1150;
+  var W = 900;
+  var fontKR = '"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif';
+  var fontEmoji = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",' + fontKR;
+  var items = d.wrongItems || [];
+
+  /* ── 높이 계산 ── */
+  var certCardBottom = 830;
+  if (d.perfect) certCardBottom = 960;
+  var reviewSectionH = 0;
+  if (items.length > 0) {
+    reviewSectionH = 60 + 70 + items.length * 160 + 40 + 120;
+  }
+  var H = certCardBottom + 60 + reviewSectionH + 80;
+
   var canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
@@ -3034,14 +3048,8 @@ function drawCertificateCanvas(d) {
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
 
-  // 외곽선
-  ctx.strokeStyle = '#1F2937';
-  ctx.lineWidth = 8;
-  roundRect(ctx, 24, 24, W - 48, H - 48, 32);
-  ctx.stroke();
-
-  // 안쪽 흰색 카드
-  var cardX = 60, cardY = 80, cardW = W - 120, cardH = H - 160;
+  /* ══════════ 상단 박사증 카드 ══════════ */
+  var cardX = 40, cardY = 30, cardW = W - 80, cardH = certCardBottom - 30;
   ctx.fillStyle = '#ffffff';
   roundRect(ctx, cardX, cardY, cardW, cardH, 24);
   ctx.fill();
@@ -3049,54 +3057,44 @@ function drawCertificateCanvas(d) {
   ctx.lineWidth = 4;
   ctx.stroke();
 
-  var fontKR = '"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif';
-  var fontEmoji = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",' + fontKR;
-
   ctx.textAlign = 'center';
   ctx.fillStyle = '#1F2937';
 
-  // 트로피
-  ctx.font = '90px ' + fontEmoji;
-  ctx.fillText('🏆', W / 2, 200);
+  ctx.font = '80px ' + fontEmoji;
+  ctx.fillText('🏆', W / 2, 140);
 
-  // 제목
-  ctx.font = '900 44px ' + fontKR;
+  ctx.font = '900 40px ' + fontKR;
   ctx.fillStyle = '#1F2937';
-  ctx.fillText('정말 대단해요! 공부 끝!', W / 2, 280);
+  ctx.fillText('학습 완료!', W / 2, 210);
 
-  // 배지
-  ctx.font = '900 30px ' + fontEmoji;
+  ctx.font = '900 28px ' + fontEmoji;
   ctx.fillStyle = '#F97316';
-  ctx.fillText(d.badge, W / 2, 340);
+  ctx.fillText(d.badge, W / 2, 260);
 
-  // 설명
   ctx.font = '500 20px ' + fontKR;
   ctx.fillStyle = '#4B5563';
-  ctx.fillText('별처럼 빛나는 ' + d.name + ' 학생!', W / 2, 410);
-  ctx.fillText(d.date + '에 문장 띄우기 대장으로 임명합니다!', W / 2, 445);
-  ctx.fillText('총 ' + d.total + '단계를 모두 완료했습니다!', W / 2, 480);
+  ctx.fillText(d.name + '님이', W / 2, 310);
+  ctx.fillText(d.date + '에', W / 2, 345);
+  ctx.fillText('총 ' + d.total + '문제를 완료했습니다!', W / 2, 380);
 
-  // 구분선
   ctx.strokeStyle = '#E2E8F0';
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.moveTo(cardX + 40, 530);
-  ctx.lineTo(cardX + cardW - 40, 530);
+  ctx.moveTo(cardX + 40, 420);
+  ctx.lineTo(cardX + cardW - 40, 420);
   ctx.stroke();
 
-  // 점수 박스 (3개)
-  var boxY = 580, boxH = 220;
-  var gap = 30;
+  var boxY = 460, boxH = 200;
+  var gap = 24;
   var boxW = (cardW - 80 - gap * 2) / 3;
   var startX = cardX + 40;
 
-  drawScoreBox(ctx, startX, boxY, boxW, boxH, '🌟', d.first, '한 번에', '맞혔어요!', '#F0FDF4', '#BBF7D0');
-  drawScoreBox(ctx, startX + (boxW + gap), boxY, boxW, boxH, '🔄', d.retry, '다시 해서', '맞혔어요!', '#FEFCE8', '#FEF08A');
-  drawScoreBox(ctx, startX + 2 * (boxW + gap), boxY, boxW, boxH, '💭', d.wrong, '생각이 더', '필요해요', '#FEF2F2', '#FECACA');
+  drawScoreBox(ctx, startX, boxY, boxW, boxH, '🌟', d.first, '처음에 맞힌 문제', '', '#F0FDF4', '#BBF7D0');
+  drawScoreBox(ctx, startX + (boxW + gap), boxY, boxW, boxH, '🔄', d.retry, '재도전 후 맞힌 문제', '', '#FEFCE8', '#FEF08A');
+  drawScoreBox(ctx, startX + 2 * (boxW + gap), boxY, boxW, boxH, '📝', '-' + d.wrong, '틀린 문제', '', '#FEF2F2', '#FECACA');
 
-  // 완벽 메시지
   if (d.perfect) {
-    var pX = cardX + 40, pY = 840, pW = cardW - 80, pH = 90;
+    var pX = cardX + 40, pY = 700, pW = cardW - 80, pH = 80;
     var perfectGrad = ctx.createLinearGradient(pX, pY, pX + pW, pY);
     perfectGrad.addColorStop(0, '#FFEDD5');
     perfectGrad.addColorStop(1, '#FEF9C3');
@@ -3107,15 +3105,130 @@ function drawCertificateCanvas(d) {
     ctx.lineWidth = 4;
     ctx.stroke();
 
-    ctx.font = '900 26px ' + fontEmoji;
+    ctx.font = '900 24px ' + fontEmoji;
     ctx.fillStyle = '#92400E';
+    ctx.textAlign = 'center';
     ctx.fillText('🌈 우와! 완벽해요! 당신은 띄어쓰기 박사님! 🎓', W / 2, pY + pH / 2 + 10);
   }
 
-  // 저작권
-  ctx.font = '500 14px ' + fontKR;
-  ctx.fillStyle = '#9CA3AF';
-  ctx.fillText('© 2026 GEG 화성(깊이 e끌림) · 띄어쓰기 학습 놀이터', W / 2, H - 60);
+  /* ══════════ 하단 틀린 문제 복습 섹션 ══════════ */
+  if (items.length > 0) {
+    var secX = 40, secY = certCardBottom + 40, secW = W - 80;
+    var secH = reviewSectionH;
+
+    ctx.fillStyle = '#ffffff';
+    roundRect(ctx, secX, secY, secW, secH, 24);
+    ctx.fill();
+    ctx.strokeStyle = '#1F2937';
+    ctx.lineWidth = 4;
+    roundRect(ctx, secX, secY, secW, secH, 24);
+    ctx.stroke();
+
+    var hdrY = secY + 40;
+    ctx.textAlign = 'left';
+    ctx.font = '900 22px ' + fontEmoji;
+    ctx.fillStyle = '#1F2937';
+    ctx.fillText('🔄  틀린 문제 복습하기', secX + 30, hdrY);
+
+    var badgeX = secX + 30 + ctx.measureText('🔄  틀린 문제 복습하기').width + 14;
+    ctx.fillStyle = '#EF4444';
+    roundRect(ctx, badgeX, hdrY - 18, 36, 26, 13);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '700 14px ' + fontKR;
+    ctx.textAlign = 'center';
+    ctx.fillText(String(items.length), badgeX + 18, hdrY + 1);
+
+    ctx.strokeStyle = '#E5E7EB';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(secX + 24, hdrY + 20);
+    ctx.lineTo(secX + secW - 24, hdrY + 20);
+    ctx.stroke();
+
+    var guideY = hdrY + 56;
+    var guideBoxW = secW - 60, guideBoxH = 44;
+    ctx.fillStyle = '#FFF9C4';
+    roundRect(ctx, secX + 30, guideY - 28, guideBoxW, guideBoxH, 10);
+    ctx.fill();
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = '#FACC15';
+    ctx.lineWidth = 3;
+    roundRect(ctx, secX + 30, guideY - 28, guideBoxW, guideBoxH, 10);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.textAlign = 'center';
+    ctx.font = '700 17px ' + fontEmoji;
+    ctx.fillStyle = '#854D0E';
+    ctx.fillText('✏️  틀린 문장은 공책에 적으며 복습하세요.', W / 2, guideY + 2);
+
+    var itemStartY = guideY + 50;
+    items.forEach(function (item, i) {
+      var iy = itemStartY + i * 160;
+
+      ctx.fillStyle = '#FFF7ED';
+      roundRect(ctx, secX + 30, iy, secW - 60, 140, 14);
+      ctx.fill();
+      ctx.strokeStyle = '#FED7AA';
+      ctx.lineWidth = 2;
+      roundRect(ctx, secX + 30, iy, secW - 60, 140, 14);
+      ctx.stroke();
+
+      ctx.textAlign = 'left';
+      ctx.font = '700 14px ' + fontKR;
+      ctx.fillStyle = '#F97316';
+      ctx.fillText((i + 1) + '번째 소중한 복습', secX + 50, iy + 28);
+
+      ctx.font = '500 16px ' + fontKR;
+      ctx.fillStyle = '#6B7280';
+      ctx.fillText('💬  내가 쓴 문장: ', secX + 50, iy + 56);
+      ctx.font = '700 16px ' + fontKR;
+      ctx.fillStyle = '#1F2937';
+      var wrongLabelW = ctx.measureText('💬  내가 쓴 문장: ').width;
+      ctx.fillText(item.wrong, secX + 50 + wrongLabelW, iy + 56);
+
+      var correctBoxY = iy + 72;
+      ctx.fillStyle = '#F0FDF4';
+      roundRect(ctx, secX + 46, correctBoxY, secW - 92, 56, 10);
+      ctx.fill();
+      ctx.strokeStyle = '#BBF7D0';
+      ctx.lineWidth = 2;
+      roundRect(ctx, secX + 46, correctBoxY, secW - 92, 56, 10);
+      ctx.stroke();
+
+      ctx.textAlign = 'left';
+      ctx.font = '700 13px ' + fontKR;
+      ctx.fillStyle = '#6B7280';
+      ctx.fillText('✨ 알맞은 띄어쓰기', secX + 62, correctBoxY + 18);
+
+      ctx.font = '900 22px ' + fontKR;
+      ctx.fillStyle = '#15803D';
+      var correctWords = item.correct.split(' ');
+      var correctVisual = correctWords.join(' v ');
+      var cvW = ctx.measureText(correctVisual).width;
+      var availW = secW - 140;
+      if (cvW > availW) {
+        ctx.font = '900 18px ' + fontKR;
+      }
+      ctx.fillText(correctVisual, secX + 62, correctBoxY + 46);
+    });
+
+    var completeY = itemStartY + items.length * 160 + 20;
+    ctx.fillStyle = '#F0FDF4';
+    roundRect(ctx, secX + 30, completeY, secW - 60, 90, 14);
+    ctx.fill();
+
+    ctx.textAlign = 'center';
+    ctx.font = '40px ' + fontEmoji;
+    ctx.fillText('🎊', W / 2, completeY + 38);
+    ctx.font = '900 20px ' + fontKR;
+    ctx.fillStyle = '#15803D';
+    ctx.fillText('복습 완료!', W / 2, completeY + 62);
+    ctx.font = '500 14px ' + fontKR;
+    ctx.fillStyle = '#4B5563';
+    ctx.fillText('모든 복습을 마쳤습니다. 이제 결과를 저장하거나 새로운 도전을 시작할 수 있어요.', W / 2, completeY + 84);
+  }
 
   return canvas;
 }
